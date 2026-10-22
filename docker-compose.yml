@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: alfadoor-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: alfadoor
+      POSTGRES_USER: alfadoor
+      POSTGRES_PASSWORD: alfadoor_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - alfadoor_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alfadoor -d alfadoor"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  alfadoor_pgdata:
