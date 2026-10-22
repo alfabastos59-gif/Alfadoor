@@ -1,46 +1,45 @@
-# AlfaDoor — ambiente local inicial
+# AlfaDoor v2 — Supabase + React
 
-Primeira base técnica para a plataforma de mídia indoor: API Node.js/TypeScript, PostgreSQL e autenticação administrativa inicial.
+Primeira interface funcional da AlfaDoor com login Supabase Auth, painel administrativo e cadastro/listagem de anunciantes. Inclui schema SQL inicial para anunciantes, locais, telas, mídias, campanhas, playlists e eventos de reprodução.
 
 ## Requisitos
-- Windows 10/11
-- Node.js 20 ou superior
-- Docker Desktop (recomendado para iniciar o PostgreSQL)
+- Node.js 20+
+- Conta/projeto Supabase
 
-## 1. Preparar
-1. Extraia esta pasta em `C:\Projetos\alfadoor-local` (ou outro caminho sem restrições).
-2. Copie `.env.example` para `.env`.
-3. Abra o terminal nesta pasta e execute `npm install`.
-4. Inicie o banco: `docker compose up -d db`
-5. Crie as tabelas: `npm run db:migrate`
-6. Inicie a API: `npm run dev`
+## 1. Configurar Supabase
+1. Crie um projeto no https://supabase.com/dashboard.
+2. Abra SQL Editor e execute o conteúdo de `supabase/schema.sql`.
+3. Em Authentication → Users, crie o usuário administrador com e-mail e senha.
+4. No SQL Editor, promova o usuário criado a administrador. Substitua o e-mail:
+   ```sql
+   update public.profiles
+   set role = 'admin', active = true
+   where id = (select id from auth.users where email = 'admin@seudominio.com');
+   ```
+5. Em Project Settings → API, copie a Project URL e a chave publicável (publishable/anon). Nunca use a `service_role`/secret key no navegador.
 
-A API ficará em `http://localhost:4000`.
-Teste de saúde: `http://localhost:4000/health`.
+## 2. Executar no Windows
+1. Copie `.env.example` para `.env`.
+2. Preencha `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
+3. No PowerShell, dentro da pasta do projeto:
+   ```powershell
+   npm install
+   npm run dev
+   ```
+4. Abra o endereço local mostrado no terminal, normalmente `http://127.0.0.1:5173`.
 
-## 2. Criar o primeiro administrador
-Configure `ADMIN_EMAIL` e `ADMIN_PASSWORD` no `.env` antes de iniciar a API. No primeiro arranque, a API cria esse usuário se ainda não existir.
+## O que já funciona
+- Tela de login conectada ao Supabase Auth.
+- Sessão persistente e botão sair.
+- Dashboard inicial.
+- Cadastro e listagem de anunciantes, com busca.
+- Estrutura SQL com RLS habilitado para tabelas administrativas.
+- Tabelas preparadas para locais, dispositivos, campanhas, playlists e eventos.
+- Bucket privado `alfadoor-media` com políticas de acesso administrativo.
 
-Solicite um token:
-```powershell
-$body = @{ email = "admin@alfadoor.local"; password = "TroqueEstaSenha123!" } | ConvertTo-Json
-Invoke-RestMethod -Method Post -Uri http://localhost:4000/api/auth/login -ContentType "application/json" -Body $body
-```
-Copie o `token` da resposta. Para consultar o perfil:
-```powershell
-$headers = @{ Authorization = "Bearer COLE_SEU_TOKEN" }
-Invoke-RestMethod -Uri http://localhost:4000/api/auth/me -Headers $headers
-```
-
-## Endpoints iniciais
-- `GET /health` — estado básico da API e banco
-- `POST /api/auth/login` — autenticação
-- `GET /api/auth/me` — perfil do usuário autenticado
-- `GET /api/advertisers` — lista anunciantes (autenticado)
-- `POST /api/advertisers` — cadastra anunciante (autenticado)
-
-## Segurança e limitações desta base
-- Use uma senha forte no `.env`; nunca publique esse arquivo.
-- O JWT é uma base inicial. Antes de uso comercial, acrescente rotação/expiração de sessões, recuperação de senha, limitação de tentativas, auditoria e política de backup.
-- Ainda não inclui o app Android Player, upload de mídia, campanhas, pagamentos ou relatórios.
-- A API local não fica pública na internet. Para acesso externo será necessário implantar e proteger os serviços.
+## Notas importantes de segurança
+- O primeiro usuário Auth é criado pelo Dashboard; o trigger cria o perfil como `operator`. Promova explicitamente o administrador pelo SQL acima.
+- O frontend usa somente a chave publicável/anon. Nunca coloque a chave `service_role` no `.env` do frontend.
+- O SQL de políticas é adequado como base de painel interno. Antes de abrir contas a anunciantes ou parear dispositivos reais, crie políticas separadas por proprietário e endpoints seguros para credenciais dos dispositivos. Não exponha tokens secretos de TV no navegador.
+- Os módulos de telas, campanhas, upload e Android Player estão preparados no banco/roadmap, mas a interface dessas funções ainda será implementada.
+- A configuração do bucket aceita imagens e vídeos até 500 MiB; confira os limites do plano Supabase e ajuste para sua operação.
